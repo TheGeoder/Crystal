@@ -1,0 +1,8 @@
+set(CMAKE_SYSTEM_NAME Windows)
+set(CMAKE_SYSTEM_PROCESSOR AMD64)
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDLL" CACHE STRING "Use dynamic MSVC runtime (/MD)")
+add_compile_definitions(
+    WIN32_LEAN_AND_MEAN
+    NOMINMAX
+    _CRT_SECURE_NO_WARNINGS
+)
