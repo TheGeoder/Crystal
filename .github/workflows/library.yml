@@ -1,0 +1,75 @@
+name: Build Injection Libraries
+
+on:
+  push:
+    paths:
+      - 'platform/UniversalInject.cpp'
+      - 'CMakeLists.txt'
+      - '.github/workflows/library.yml'
+  workflow_dispatch:
+
+jobs:
+  inject-android64:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build libinject.so (arm64-v8a)
+        run: |
+          cmake -B build -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/android64.toolchain.cmake -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --target UniversalInject --config Release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Inject-Android64-so
+          path: build/libinject.so
+
+  inject-android32:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build libinject.so (armeabi-v7a)
+        run: |
+          cmake -B build -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/android32.toolchain.cmake -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --target UniversalInject --config Release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Inject-Android32-so
+          path: build/libinject.so
+
+  inject-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build XInput9_1_0.dll (x64)
+        run: |
+          cmake -B build -A x64 -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/windows.toolchain.cmake
+          cmake --build build --target UniversalInject --config Release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Inject-Windows-dll
+          path: build/Release/XInput9_1_0.dll
+
+  inject-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build libinject.dylib (macOS Universal)
+        run: |
+          cmake -B build -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/macos.toolchain.cmake -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --target UniversalInject --config Release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Inject-macOS-dylib
+          path: build/libinject.dylib
+
+  inject-ios:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build libinject.dylib (iOS arm64)
+        run: |
+          cmake -B build -G Xcode -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/ios.toolchain.cmake
+          cmake --build build --target UniversalInject --config Release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Inject-iOS-dylib
+          path: build/Release-iphoneos/libinject.dylib
