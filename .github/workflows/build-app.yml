@@ -1,0 +1,109 @@
+name: Build App Packages (.apk, .exe, .ipa, .app)
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  # 1. Build Windows .exe Launcher + Loader DLLs
+  app-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Windows .exe & DLLs
+        run: |
+          cmake -B build -A x64 -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/windows.toolchain.cmake
+          cmake --build build --config Release
+          mkdir app-dist
+          copy build\Release\GDModLoaderApp.exe app-dist\GDModLoader.exe
+          copy build\Release\LoaderCore.dll app-dist\
+          copy build\Release\XInput9_1_0.dll app-dist\
+          xcopy /E /I styles app-dist\styles
+          xcopy /E /I resources app-dist\resources
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Windows-App-EXE
+          path: app-dist/
+
+  # 2. Build Android .apk Launcher
+  app-android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Compile 64-bit & 32-bit .so Libraries
+        run: |
+          cmake -B build64 -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/android64.toolchain.cmake -DCMAKE_BUILD_TYPE=Release
+          cmake --build build64 --config Release
+
+          cmake -B build32 -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/android32.toolchain.cmake -DCMAKE_BUILD_TYPE=Release
+          cmake --build build32 --config Release
+
+          # Copy compiled .so files into the Android app's jniLibs folders
+          mkdir -p android-app/app/src/main/jniLibs/arm64-v8a
+          mkdir -p android-app/app/src/main/jniLibs/armeabi-v7a
+          cp build64/libloader.so build64/libinject.so android-app/app/src/main/jniLibs/arm64-v8a/
+          cp build32/libloader.so build32/libinject.so android-app/app/src/main/jniLibs/armeabi-v7a/
+
+      - name: Build Android .apk with Gradle
+        working-directory: android-app
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Android-App-APK
+          path: android-app/app/build/outputs/apk/release/*.apk
+
+  # 3. Build macOS .app Bundle
+  app-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build macOS .app Bundle
+        run: |
+          cmake -B build -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/macos.toolchain.cmake -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --config Release
+
+          # Package into a standard macOS .app bundle structure
+          mkdir -p "GDModLoader.app/Contents/MacOS"
+          mkdir -p "GDModLoader.app/Contents/Resources"
+          cp build/libLoaderCore.dylib "GDModLoader.app/Contents/MacOS/"
+          cp build/libinject.dylib "GDModLoader.app/Contents/MacOS/"
+          cp -r styles resources "GDModLoader.app/Contents/Resources/"
+          zip -r GDModLoader-macOS.app.zip GDModLoader.app
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macOS-App-Bundle
+          path: GDModLoader-macOS.app.zip
+
+  # 4. Build iOS .ipa Package
+  app-ios:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build iOS .ipa
+        run: |
+          cmake -B build -G Xcode -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/ios.toolchain.cmake
+          cmake --build build --config Release
+
+          # Package into an unsigned .ipa (Payload/*.app) for TrollStore / AltStore
+          mkdir -p Payload/GDModLoader.app/Frameworks
+          cp build/Release-iphoneos/libLoaderCore.dylib Payload/GDModLoader.app/Frameworks/
+          cp build/Release-iphoneos/libinject.dylib Payload/GDModLoader.app/Frameworks/
+          cp -r styles resources Payload/GDModLoader.app/
+          zip -r GDModLoader-iOS.ipa Payload
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: iOS-App-IPA
+          path: GDModLoader-iOS.ipa
