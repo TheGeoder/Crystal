@@ -1,0 +1,10 @@
+{
+  "name": "Amethyst",
+  "default": true,
+  "titleLogo": "resources/title.png",
+  "colors": {
+    "primary": "#9B59B6",
+    "background": "#191223",
+    "accent": "#BE78DC"
+  }
+}
