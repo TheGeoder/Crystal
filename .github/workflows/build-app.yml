@@ -1,109 +1,99 @@
-name: Build App Packages (.apk, .exe, .ipa, .app)
+name: Build Crystal Packages (All Platforms)
 
 on:
   push:
-    tags:
-      - 'v*'
   workflow_dispatch:
+  workflow_run:
+    workflows: ["Build Crystal Injection Libraries"]
+    types:
+      - completed
 
 jobs:
-  # 1. Build Windows .exe Launcher + Loader DLLs
-  app-windows:
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Build Windows .exe & DLLs
-        run: |
-          cmake -B build -A x64 -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/windows.toolchain.cmake
-          cmake --build build --config Release
-          mkdir app-dist
-          copy build\Release\GDModLoaderApp.exe app-dist\GDModLoader.exe
-          copy build\Release\LoaderCore.dll app-dist\
-          copy build\Release\XInput9_1_0.dll app-dist\
-          xcopy /E /I styles app-dist\styles
-          xcopy /E /I resources app-dist\resources
-      - uses: actions/upload-artifact@v4
-        with:
-          name: Windows-App-EXE
-          path: app-dist/
-
-  # 2. Build Android .apk Launcher
-  app-android:
+  crystal-android64:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-
-      - name: Compile 64-bit & 32-bit .so Libraries
+      - name: Build Crystal Android 64-bit
         run: |
-          cmake -B build64 -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/android64.toolchain.cmake -DCMAKE_BUILD_TYPE=Release
-          cmake --build build64 --config Release
-
-          cmake -B build32 -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/android32.toolchain.cmake -DCMAKE_BUILD_TYPE=Release
-          cmake --build build32 --config Release
-
-          # Copy compiled .so files into the Android app's jniLibs folders
-          mkdir -p android-app/app/src/main/jniLibs/arm64-v8a
-          mkdir -p android-app/app/src/main/jniLibs/armeabi-v7a
-          cp build64/libloader.so build64/libinject.so android-app/app/src/main/jniLibs/arm64-v8a/
-          cp build32/libloader.so build32/libinject.so android-app/app/src/main/jniLibs/armeabi-v7a/
-
-      - name: Build Android .apk with Gradle
-        working-directory: android-app
-        run: |
-          chmod +x gradlew
-          ./gradlew assembleRelease
-
+          cmake -B build -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/android64.toolchain.cmake -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --config Release
+          mkdir -p dist
+          cp build/libcrystal.so dist/
+          cp build/libinject.so dist/
+          cp -r styles resources dist/
       - uses: actions/upload-artifact@v4
         with:
-          name: Android-App-APK
-          path: android-app/app/build/outputs/apk/release/*.apk
+          name: Crystal-Android64
+          path: dist/
 
-  # 3. Build macOS .app Bundle
-  app-macos:
+  crystal-android32:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Crystal Android 32-bit
+        run: |
+          cmake -B build -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/android32.toolchain.cmake -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --config Release
+          mkdir -p dist
+          cp build/libcrystal.so dist/
+          cp build/libinject.so dist/
+          cp -r styles resources dist/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Crystal-Android32
+          path: dist/
+
+  crystal-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Crystal Windows (x64)
+        run: |
+          cmake -B build -A x64 -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/windows.toolchain.cmake
+          cmake --build build --config Release
+          mkdir dist
+          copy build\Release\CrystalCore.dll dist\
+          copy build\Release\XInput9_1_0.dll dist\
+          xcopy /E /I styles dist\styles
+          xcopy /E /I resources dist\resources
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Crystal-Windows
+          path: dist/
+
+  crystal-macos:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Build macOS .app Bundle
+      - name: Build Crystal macOS (.app bundle)
         run: |
           cmake -B build -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/macos.toolchain.cmake -DCMAKE_BUILD_TYPE=Release
           cmake --build build --config Release
-
-          # Package into a standard macOS .app bundle structure
-          mkdir -p "GDModLoader.app/Contents/MacOS"
-          mkdir -p "GDModLoader.app/Contents/Resources"
-          cp build/libLoaderCore.dylib "GDModLoader.app/Contents/MacOS/"
-          cp build/libinject.dylib "GDModLoader.app/Contents/MacOS/"
-          cp -r styles resources "GDModLoader.app/Contents/Resources/"
-          zip -r GDModLoader-macOS.app.zip GDModLoader.app
-
+          mkdir -p "Crystal.app/Contents/MacOS"
+          mkdir -p "Crystal.app/Contents/Resources"
+          cp build/libCrystalCore.dylib "Crystal.app/Contents/MacOS/"
+          cp build/libinject.dylib "Crystal.app/Contents/MacOS/"
+          cp -r styles resources "Crystal.app/Contents/Resources/"
+          zip -r Crystal-macOS.app.zip Crystal.app
       - uses: actions/upload-artifact@v4
         with:
-          name: macOS-App-Bundle
-          path: GDModLoader-macOS.app.zip
+          name: Crystal-macOS-App
+          path: Crystal-macOS.app.zip
 
-  # 4. Build iOS .ipa Package
-  app-ios:
+  crystal-ios:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Build iOS .ipa
+      - name: Build Crystal iOS (.ipa package)
         run: |
           cmake -B build -G Xcode -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/ios.toolchain.cmake
           cmake --build build --config Release
-
-          # Package into an unsigned .ipa (Payload/*.app) for TrollStore / AltStore
-          mkdir -p Payload/GDModLoader.app/Frameworks
-          cp build/Release-iphoneos/libLoaderCore.dylib Payload/GDModLoader.app/Frameworks/
-          cp build/Release-iphoneos/libinject.dylib Payload/GDModLoader.app/Frameworks/
-          cp -r styles resources Payload/GDModLoader.app/
-          zip -r GDModLoader-iOS.ipa Payload
-
+          mkdir -p Payload/Crystal.app/Frameworks
+          cp build/Release-iphoneos/libCrystalCore.dylib Payload/Crystal.app/Frameworks/
+          cp build/Release-iphoneos/libinject.dylib Payload/Crystal.app/Frameworks/
+          cp -r styles resources Payload/Crystal.app/
+          zip -r Crystal-iOS.ipa Payload
       - uses: actions/upload-artifact@v4
         with:
-          name: iOS-App-IPA
-          path: GDModLoader-iOS.ipa
+          name: Crystal-iOS-IPA
+          path: Crystal-iOS.ipa
