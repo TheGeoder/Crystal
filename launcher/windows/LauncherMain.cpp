@@ -5,7 +5,7 @@
 namespace fs = std::filesystem;
 
 int main() {
-    std::cout << "=== GDModLoader Installer / Launcher ===" << std::endl;
+    std::cout << "=== Crystal Installer / Launcher ===" << std::endl;
 
     // Default Steam path for Geometry Dash
     fs::path gdPath = "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Geometry Dash";
@@ -21,7 +21,7 @@ int main() {
     fs::copy_file("XInput9_1_0.dll", gdPath / "XInput9_1_0.dll", fs::copy_options::overwrite_existing);
     fs::copy_file("LoaderCore.dll", gdPath / "LoaderCore.dll", fs::copy_options::overwrite_existing);
 
-    std::cout << "Installed GDModLoader! Launching Geometry Dash..." << std::endl;
+    std::cout << "Installed Crystal! Launching Geometry Dash..." << std::endl;
     ShellExecuteA(nullptr, "open", (gdPath / "GeometryDash.exe").string().c_str(), nullptr, gdPath.string().c_str(), SW_SHOWDEFAULT);
     return 0;
 }
