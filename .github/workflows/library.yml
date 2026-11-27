@@ -1,4 +1,4 @@
-name: Build Injection Libraries
+name: Build Crystal Injection Libraries
 
 on:
   push:
@@ -19,7 +19,7 @@ jobs:
           cmake --build build --target UniversalInject --config Release
       - uses: actions/upload-artifact@v4
         with:
-          name: Inject-Android64-so
+          name: Crystal-Inject-Android64
           path: build/libinject.so
 
   inject-android32:
@@ -32,7 +32,7 @@ jobs:
           cmake --build build --target UniversalInject --config Release
       - uses: actions/upload-artifact@v4
         with:
-          name: Inject-Android32-so
+          name: Crystal-Inject-Android32
           path: build/libinject.so
 
   inject-windows:
@@ -45,31 +45,31 @@ jobs:
           cmake --build build --target UniversalInject --config Release
       - uses: actions/upload-artifact@v4
         with:
-          name: Inject-Windows-dll
+          name: Crystal-Inject-Windows
           path: build/Release/XInput9_1_0.dll
 
   inject-macos:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Build libinject.dylib (macOS Universal)
+      - name: Build libinject.dylib (macOS)
         run: |
           cmake -B build -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/macos.toolchain.cmake -DCMAKE_BUILD_TYPE=Release
           cmake --build build --target UniversalInject --config Release
       - uses: actions/upload-artifact@v4
         with:
-          name: Inject-macOS-dylib
+          name: Crystal-Inject-macOS
           path: build/libinject.dylib
 
   inject-ios:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Build libinject.dylib (iOS arm64)
+      - name: Build libinject.dylib (iOS)
         run: |
           cmake -B build -G Xcode -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/ios.toolchain.cmake
           cmake --build build --target UniversalInject --config Release
       - uses: actions/upload-artifact@v4
         with:
-          name: Inject-iOS-dylib
+          name: Crystal-Inject-iOS
           path: build/Release-iphoneos/libinject.dylib
